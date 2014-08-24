@@ -48,7 +48,7 @@ Patches welcome, this code is PoC quality (at best).
 ## Credits
 
 - Build environment based heavily on
-  (hlnd/nrf51-pure-gcc-setup)[https://github.com/hlnd/nrf51-pure-gcc-setup]
+  [hlnd/nrf51-pure-gcc-setup](https://github.com/hlnd/nrf51-pure-gcc-setup)
 
 - Heavily influenced by the existing FreeRTOS Demo: CORTEX_LM3S102_GCC
   and the existing FreeRTOS ARM_CM0 code.
