@@ -47,10 +47,9 @@ port.c(xPortPendSVHandler):
   like. No practical effect on my projects yet.
 
 
-I've reduced the default call stack size do a few hundred bytes above
-the 1596B required for softdevice operation (down from 0xC00). Task
+I've reduced the default call stack size to the 1596B required for softdevice operation (down from 0xC00). Task
 stacks are allocated from the heap, but if you add more functionality
-outside tasks (event handlers, notably) then you'll need to increase
+outside tasks (BLE event handlers, notably) then you'll need to increase
 the stack in startup_nrf51.s (and decrease the configTOTAL_HEAP_SIZE
 in FreeRTOSConfig.h). There's only ~2kB of RAM left after the s120
 softdevice has it's way (it uses 10K+1.5K stack); so memory will be
