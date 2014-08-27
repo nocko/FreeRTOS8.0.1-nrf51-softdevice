@@ -20,9 +20,38 @@ directly and simply `#define xSysTickHandler RTC1_IRQHander`. I chose
 not to do this because nearly all the nordic demos rely on app_timer
 functionality, which would break if I stole RTC1 away from it.
 
-I've left some native NVIC_* calls / disable interrupt macros where I don't think it'll matter (e.g. disabling interrupt on unrecoverable errors).
+CPSID/CPSIE Fun:
 
-I've reduced the default call stack size do a few hundred bytes above the ~1600 required for softdevice operation (down from 0xC00). This was needed to free up some additional heap so that the queue tasks could be allocated. Additional tuning is surely required. There's only ~5kB of RAM left after the s120 softdevice has it's way; so careful consideration is needed.
+If CPSID is called in for an extended period of time, then the radio
+will miss it's deadlines. For now, I've mostly been commenting out
+these instructions, while investigating the implications. Eventually,
+the correct way to handle these may be to store a mask of enabled
+application interrupts (excluding those blocked or restricted by the
+sd) and sprinkle it around as needed. You would think that the
+sd_nvic_critical_region_enter would do something like this, however in
+SDK 6.0.0 this function (is empty.
+
+port.c(ulSetInterruptMaskFromISR):
+  Removed cpsid before the branch. There was no complimentary cspie in
+  the vClearInterruptMaskFromISR. Since these only seem to be called
+  from the TickHandler and in this port this is not run as an ISR, I
+  don't think this should matter.
+
+port.c(xPortPendSVHandler):
+  I commented out the cspid/cspie bookending
+  the branch to vTaskSwitchContext. This would seem like a "bad idea",
+  but the logic in that function has nothing to do with the actual
+  context switch. It's more of a hook for stack overflow testing and
+  the trace framework.
+
+
+
+I've reduced the default call stack size do a few hundred bytes above
+the ~1600 required for softdevice operation (down from 0xC00). This
+was needed to free up some additional heap so that the queue tasks
+could be allocated. Additional tuning is surely required. There's only
+~4kB of RAM left after the s120 softdevice has it's way; so careful
+consideration is needed.
 
 Patches welcome, this code is PoC quality (at best).
 

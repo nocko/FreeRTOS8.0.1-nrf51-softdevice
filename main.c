@@ -65,6 +65,9 @@ void vMainToggleLED( void );
  * Sets up the hardware used by the demo.
  */
 static void prvSetupHardware( void );
+
+/* Tasks */
+
 static void prvQueueReceiveTask( void *pvParameters );
 static void prvQueueSendTask( void *pvParameters );
 
@@ -76,9 +79,8 @@ unsigned portBASE_TYPE uxErrorStatus = pdPASS;
 
 /*-----------------------------------------------------------*/
 
-void main( void )
+int main( void )
 {
-  SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, false);
 
   /* Setup the ports used by the demo and the clock. */
   prvSetupHardware();
@@ -106,11 +108,13 @@ void main( void )
 	 scheduler. */
       for( ;; );
     }
+  return 0;
 }
 /*-----------------------------------------------------------*/
 
 void prvSetupHardware( void )
 {
+  SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, false);
   nrf_gpio_pin_set(LED_0);
   nrf_gpio_cfg_output(LED_0);
 }
@@ -179,26 +183,6 @@ unsigned long ulReceivedValue;
                 }
         }
 }
-/*-----------------------------------------------------------*/
-void vApplicationTickHook( void )
-{
-#if mainCHECK_INTERRUPT_STACK == 1
-  extern unsigned long _pvHeapStart[];
-
-        /* This function will be called by each tick interrupt if
-        configUSE_TICK_HOOK is set to 1 in FreeRTOSConfig.h.  User code can be
-        added here, but the tick hook is called from an interrupt context, so
-        code must not attempt to block, and only the interrupt safe FreeRTOS API
-        functions can be used (those that end in FromISR()). */
-
-        /* Manually check the last few bytes of the interrupt stack to check they
-        have not been overwritten.  Note - the task stacks are automatically
-        checked for overflow if configCHECK_FOR_STACK_OVERFLOW is set to 1 or 2
-        in FreeRTOSConifg.h, but the interrupt stack is not. */
-        configASSERT( memcmp( ( void * ) _pvHeapStart, ucExpectedInterruptStackValues, sizeof( ucExpectedInterruptStackValues ) ) == 0U );
-#endif /* mainCHECK_INTERRUPT_STACK */
-}
-/*-----------------------------------------------------------*/
 
 void vApplicationIdleHook( void ) {
   uint32_t err_code = sd_app_evt_wait();

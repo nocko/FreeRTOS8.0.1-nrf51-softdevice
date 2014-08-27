@@ -341,9 +341,7 @@ void xPortPendSVHandler( void )
 	" 	stmia r0!, {r4-r7}              	\n"
 	"										\n"
 	"	push {r3, r14}						\n"
-	"	cpsid i								\n"
 	"	bl vTaskSwitchContext				\n"
-	"	cpsie i								\n"
 	"	pop {r2, r3}						\n" /* lr goes in r3. r2 now holds tcb pointer. */
 	"										\n"
 	"	ldr r1, [r2]						\n"
