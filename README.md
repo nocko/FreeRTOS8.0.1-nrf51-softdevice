@@ -25,11 +25,12 @@ CPSID/CPSIE Fun:
 If CPSID is called in for an extended period of time, then the radio
 will miss it's deadlines. For now, I've mostly been commenting out
 these instructions, while investigating the implications. Eventually,
-the correct way to handle these may be to store a mask of enabled
+the correct way to handle these may be to store/restore a mask of enabled
 application interrupts (excluding those blocked or restricted by the
 sd) and sprinkle it around as needed. You would think that the
 sd_nvic_critical_region_enter would do something like this, however in
-SDK 6.0.0 this function (is empty.
+SDK 6.0.0 there is only a stub, leaving us to wonder how this is
+implemented in the softdevice blob.
 
 port.c(ulSetInterruptMaskFromISR):
   Removed cpsid before the branch. There was no complimentary cspie in
@@ -42,16 +43,18 @@ port.c(xPortPendSVHandler):
   the branch to vTaskSwitchContext. This would seem like a "bad idea",
   but the logic in that function has nothing to do with the actual
   context switch. It's more of a hook for stack overflow testing and
-  the trace framework.
-
+  the trace framework. Could be bad news if for task stats and the
+  like. No practical effect on my projects yet.
 
 
 I've reduced the default call stack size do a few hundred bytes above
-the ~1600 required for softdevice operation (down from 0xC00). This
-was needed to free up some additional heap so that the queue tasks
-could be allocated. Additional tuning is surely required. There's only
-~4kB of RAM left after the s120 softdevice has it's way; so careful
-consideration is needed.
+the 1596B required for softdevice operation (down from 0xC00). Task
+stacks are allocated from the heap, but if you add more functionality
+outside tasks (event handlers, notably) then you'll need to increase
+the stack in startup_nrf51.s (and decrease the configTOTAL_HEAP_SIZE
+in FreeRTOSConfig.h). There's only ~2kB of RAM left after the s120
+softdevice has it's way (it uses 10K+1.5K stack); so memory will be
+very tight. Careful application design is needed.
 
 Patches welcome, this code is PoC quality (at best).
 
