@@ -71,12 +71,9 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-/* nRF Timer Routines */
-#include "nordic_common.h"
+/* nRF includes */
+#include "nrf.h"
 #include "softdevice_handler.h"
-#include "app_timer.h"
-#include "app_util.h"
-#include "app_error.h"
 
 /* Constants required to manipulate the NVIC. */
 #define portNVIC_INT_CTRL			( ( volatile uint32_t *) 0xe000ed04 )
@@ -239,59 +236,32 @@ void vPortYield( void )
 }
 /*-----------------------------------------------------------*/
 
-typedef enum
-{
-    APP_IRQ_PRIORITY_HIGH = 1,
-    APP_IRQ_PRIORITY_LOW  = 3
-} app_irq_priority_t;
-
-#define NRF_APP_PRIORITY_THREAD    4
-#define EXTERNAL_INT_VECTOR_OFFSET 16
-
-static __INLINE uint8_t current_int_priority_get(void)
-{
-    uint32_t isr_vector_num = (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk);
-    if (isr_vector_num > 0)
-    {
-        int32_t irq_type = ((int32_t)isr_vector_num - EXTERNAL_INT_VECTOR_OFFSET);
-        return (NVIC_GetPriority((IRQn_Type)irq_type) & 0xFF);
-    }
-    else
-    {
-        return NRF_APP_PRIORITY_THREAD;
-    }
-}
-
-void vPortEnterCritical( void )
-{
+void vPortEnterCritical( void ) {
   uint8_t IS_NESTED_CRITICAL_REGION = ++uxCriticalNesting > 1 ? 1 : 0;
-  uint32_t CURRENT_INT_PRI = current_int_priority_get();
-  if (CURRENT_INT_PRI != APP_IRQ_PRIORITY_HIGH) { 
-    uint32_t ERR_CODE = sd_nvic_critical_region_enter(&IS_NESTED_CRITICAL_REGION);
-    if (ERR_CODE == NRF_ERROR_SOFTDEVICE_NOT_ENABLED) {
-      __disable_irq();
-    }								  
-    else {
-      APP_ERROR_CHECK(ERR_CODE);
-    }
+  uint32_t err_code = sd_nvic_critical_region_enter(&IS_NESTED_CRITICAL_REGION);
+  if (err_code == NRF_ERROR_SOFTDEVICE_NOT_ENABLED) {
+    __disable_irq();
+  }								  
+  else {
+    APP_ERROR_CHECK(err_code);
   }
 }
+
 /*-----------------------------------------------------------*/
 
 void vPortExitCritical( void )
 {
   configASSERT( uxCriticalNesting );
   uint8_t IS_NESTED_CRITICAL_REGION = uxCriticalNesting-- > 1 ? 1 : 0;
-  uint32_t CURRENT_INT_PRI = current_int_priority_get();
-  if (CURRENT_INT_PRI != APP_IRQ_PRIORITY_HIGH) {
-    uint32_t ERR_CODE;
+  uint32_t err_code = sd_nvic_critical_region_exit(IS_NESTED_CRITICAL_REGION);
+  if (err_code != NRF_ERROR_SOFTDEVICE_NOT_ENABLED) {
     __enable_irq();
-    ERR_CODE = sd_nvic_critical_region_exit(IS_NESTED_CRITICAL_REGION);
-    if (ERR_CODE != NRF_ERROR_SOFTDEVICE_NOT_ENABLED) {
-      APP_ERROR_CHECK(ERR_CODE);
-    }
+  }
+  else {
+    APP_ERROR_CHECK(err_code);
   }
 }
+
 
 /*-----------------------------------------------------------*/
 
@@ -369,7 +339,7 @@ void xPortPendSVHandler( void )
 void xPortSysTickHandler( void )
 {
 uint32_t ulPreviousMask;
-
+        NRF_RTC1->EVENTS_TICK = 0;
 	ulPreviousMask = portSET_INTERRUPT_MASK_FROM_ISR();
 	{
 		/* Increment the RTOS tick. */
@@ -384,36 +354,20 @@ uint32_t ulPreviousMask;
 /*-----------------------------------------------------------*/
 
 /*
- * Setup the RTC1 via nRF app_timer api to replace the non-existant
- systick timer to generate the tick interrupts at the required *
- frequency.
+ * Setup the RTC1 to replace the non-existant systick timer to
+ generate the tick interrupts at the required * frequency.
  */
-
-#define APP_TIMER_PRESCALER 0
-#define APP_TIMER_MAX_TIMERS 3
-#define APP_TIMER_OP_QUEUE_SIZE 6 
-
-static app_timer_id_t tick_timer_id;
-
-void prvPortSysTickHandler(void * p_context) {
-  /* Wrapper function needed to match the app_timer api */
-  UNUSED_PARAMETER(p_context);
-  xPortSysTickHandler();
-}
 
 void prvSetupTimerInterrupt( void )
 {
-  uint32_t err_code;
-  /* Configure RTC1 via nRF routines to interrupt at the requested rate. We could directly drive the RTC1, but then the app_timer API used by the nRF demo apps would break. */
-  APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_OP_QUEUE_SIZE, false);
+  NRF_RTC1->PRESCALER = ( configCPU_CLOCK_HZ / configTICK_RATE_HZ ) - 1;
+  NVIC_SetPriority(RTC1_IRQn, 3);
+  NRF_RTC1->INTENSET = RTC_INTENSET_TICK_Msk;
 
-  /* Create tick timer */
-  err_code = app_timer_create(&tick_timer_id,
-			      APP_TIMER_MODE_REPEATED,
-			      prvPortSysTickHandler);
-  APP_ERROR_CHECK(err_code);
-  err_code = app_timer_start(tick_timer_id, APP_TIMER_TICKS(portTICK_PERIOD_MS,0), NULL);
-  APP_ERROR_CHECK(err_code);
+  NVIC_ClearPendingIRQ(RTC1_IRQn);
+  NVIC_EnableIRQ(RTC1_IRQn);
+
+  NRF_RTC1->TASKS_START = 1;
 }
 /*-----------------------------------------------------------*/
 

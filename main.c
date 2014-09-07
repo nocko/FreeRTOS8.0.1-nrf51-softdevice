@@ -16,7 +16,7 @@
 #include "task.h"
 #include "queue.h"
 
-#define LED_0 8
+#define LED_0 10
 
 uint8_t led_status = 0;
 
@@ -46,7 +46,7 @@ static QueueHandle_t xQueue = NULL;
 /* Function called by APP_ERROR_HANDLER via APP_ERROR_CHECK macro if
    err_code isn't NRF_SUCCESS */
 void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name) {
-  NVIC_SystemReset();
+  for(;;);
 }
 
 /* Function called if an assert fails in the softdevice */
@@ -85,6 +85,7 @@ int main( void )
   /* Setup the ports used by the demo and the clock. */
   prvSetupHardware();
 
+  
   /* Create the queue. */
   xQueue = xQueueCreate( mainQUEUE_LENGTH, sizeof( unsigned long ) );
 	
@@ -102,10 +103,12 @@ int main( void )
 		   mainQUEUE_SEND_TASK_PRIORITY, NULL );
       
       /* Start the scheduler running the tasks and co-routines just created. */
+
       vTaskStartScheduler();
       
       /* Should not get here unless we did not have enough memory to start the
 	 scheduler. */
+      vMainToggleLED();
       for( ;; );
     }
   return 0;
@@ -121,14 +124,7 @@ void prvSetupHardware( void )
 /*-----------------------------------------------------------*/
 
 void vMainToggleLED( void ) {
-  if (led_status == 0) {
-    nrf_gpio_pin_clear(LED_0);
-    led_status = 1;
-  }
-  else {
-    nrf_gpio_pin_set(LED_0);
-    led_status = 0;
-  }
+  nrf_gpio_pin_toggle(LED_0);
 }
 
 /*-----------------------------------------------------------*/

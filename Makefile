@@ -10,7 +10,6 @@ SOURCE_PATHS += ${RTOS_SOURCE_DIR}/portable/GCC/NRF51_SD
 
 # List all source files the application uses.
 APPLICATION_SRCS = $(notdir $(wildcard ./*.c))
-APPLICATION_SRCS += app_timer.c
 APPLICATION_SRCS += softdevice_handler.c
 
 #FreeRTOS Sources
@@ -31,6 +30,7 @@ SDK_PATH = $(HOME)/devel/nrf-sdk-6.0.0/nrf51822/
 TEMPLATE_PATH = ./template/
 
 CFLAGS = -Os -g -Wall
+LDFLAGS = --specs=nano.specs
 
 GDB_PORT_NUMBER = 2331
 
